@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import { Home } from "./components/pages/landingpage/Home";
-import { LoginPage } from "./components/pages/LoginPage";
+import { LoginPage } from "./components/pages/auth/LoginPage";
 import { Dashboard } from "./components/pages/dashboard/Dashboard";
 import { HouseDetails } from "./components/pages/housedetails/HouseDetails";
 import ProtectedRoute from "./components/ProtectedRoute";
