@@ -1,4 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { HouseInfo } from "./HouseInfo";
+import { MonthlyDetails } from "./MonthlyDetails";
 
 export const HouseDetails = () => {
   const navigate = useNavigate();
@@ -7,7 +9,6 @@ export const HouseDetails = () => {
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-slate-200">
 
-      
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[55%] h-[55%] rounded-full bg-blue-200/40 blur-3xl" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[55%] h-[55%] rounded-full bg-slate-300/50 blur-3xl" />
@@ -15,7 +16,6 @@ export const HouseDetails = () => {
         <div className="absolute bottom-[20%] left-[15%] w-[30%] h-[30%] rounded-full bg-blue-300/20 blur-2xl" />
       </div>
 
-      
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         {[...Array(4)].map((_, i) => (
           <div
@@ -31,7 +31,6 @@ export const HouseDetails = () => {
         ))}
       </div>
 
-      
       <nav className="relative z-10 flex items-center justify-between px-10 py-5 border-b border-slate-300/40 bg-white/20 backdrop-blur-sm">
         <h1
           className="text-lg font-semibold tracking-[0.3em] text-slate-700 select-none cursor-pointer"
@@ -52,6 +51,11 @@ export const HouseDetails = () => {
           ← dashboard
         </button>
       </nav>
+
+      <main className="relative z-10 flex-1 px-6 sm:px-10 py-8 max-w-4xl mx-auto w-full space-y-5">
+        <HouseInfo />
+        <MonthlyDetails />
+      </main>
 
       <style>{`
         @keyframes ripple {
