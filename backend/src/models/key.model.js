@@ -7,12 +7,13 @@ const keySchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    adminName: {
+    adminLevel: {
         type: String,
+        enum: ["state", "district", "municipality"],
         required: true
     },
-    ward: {
-        type:Number,
+    adminName: {
+        type: String,
         required: true
     },
     municipality: {

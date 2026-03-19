@@ -135,10 +135,6 @@ export const LoginPage = () => {
             {loading ? "processing..." : "submit"}
           </button>
         </div>
-
-        <p className="mt-6 text-center text-[10px] tracking-[0.2em] uppercase text-slate-400 select-none">
-          Admin Access Only
-        </p>
       </div>
 
       <style>{`

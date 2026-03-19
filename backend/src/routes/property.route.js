@@ -1,8 +1,11 @@
 import { Router } from "express";
-import { getPropertyDetails } from "../controllers/property.controller.js";
+import { getDashboardContent, getFamilyDetails, getWaterRegistrationDetailsForToday, getFamilyMonthlyUsageDetails } from "../controllers/property.controller.js";
 
 const router = Router();
 
-router.get("/:municipality/get-property-details", getPropertyDetails);
+router.get("/:areatype/:area/get-dashboard-content", getDashboardContent);
+router.get("/:waterid/get-family-details", getFamilyDetails);
+router.get("/:waterid/get-water-registration-details-for-today", getWaterRegistrationDetailsForToday);
+router.get("/:waterid/get-family-monthly-usage-details", getFamilyMonthlyUsageDetails);
 
 export default router;
