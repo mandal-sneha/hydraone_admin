@@ -17,6 +17,7 @@ export const protectAdminKey = async (req, res, next) => {
       }
 
       req.adminKey = keyData
+      req.adminLevel = decoded.adminLevel
       next()
 
     } catch (error) {

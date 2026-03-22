@@ -27,7 +27,14 @@ export const verifyAdminKey = async (req, res) => {
       success: true,
       message: "Admin key verified successfully",
       token,
-      data: keyDetails
+      data: {
+        key: keyDetails.key,
+        adminLevel: keyDetails.adminLevel,
+        adminName: keyDetails.adminName,
+        municipality: keyDetails.municipality,
+        district: keyDetails.district,
+        state: keyDetails.state,
+      }
     })
 
   } catch (error) {

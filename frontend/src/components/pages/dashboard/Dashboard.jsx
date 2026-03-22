@@ -1,133 +1,125 @@
-import React, { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { axiosInstance } from "../../../lib/axios.js"
-
-const WaterCard = ({ entry, onDetails }) => {
-  return (
-    <div className="relative bg-white border border-slate-200 rounded shadow-lg shadow-slate-400/20 px-6 py-5 flex flex-col gap-1 hover:shadow-xl hover:shadow-slate-400/30 transition-all duration-200">
-      <div className="absolute top-0 left-[15%] right-[15%] h-[2px] bg-gradient-to-r from-transparent via-slate-400/50 to-transparent rounded-b" />
-
-      <p className="text-[10px] font-medium tracking-[0.25em] uppercase text-slate-400 mb-1">
-        House Name
-      </p>
-      <p className="text-slate-700 text-sm font-semibold">
-        {entry.propertyName}
-      </p>
-
-      <div className="mt-3 space-y-2">
-        <div>
-          <span className="text-[10px] tracking-[0.2em] uppercase text-slate-400">
-            Water ID
-          </span>
-          <p className="font-mono text-slate-600 text-sm mt-0.5">
-            {entry.waterId}
-          </p>
-        </div>
-
-        <div>
-          <span className="text-[10px] tracking-[0.2em] uppercase text-slate-400">
-            Ward Number
-          </span>
-          <p className="text-slate-600 text-sm mt-0.5">
-            Ward {entry.wardNumber}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5">
-        <button
-          onClick={() => onDetails(entry.waterId)}
-          className="px-5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs tracking-widest font-medium rounded transition-all duration-200 shadow-md shadow-slate-500/30 hover:shadow-lg hover:shadow-slate-500/40"
-        >
-          see details
-        </button>
-      </div>
-    </div>
-  )
-}
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { axiosInstance } from "../../../lib/axios.js";
+import StatePage from "./adminlevelpages/StatePage.jsx";
 
 const Dashboard = () => {
-  const navigate = useNavigate()
-  const [families, setFamilies] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [municipality, setMunicipality] = useState("")
+  const navigate = useNavigate();
+  const { stateName } = useParams();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adminConfig, setAdminConfig] = useState({
+    areaName: "",
+    userName: ""
+  });
 
   useEffect(() => {
-    const fetchFamilies = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const adminUser = JSON.parse(localStorage.getItem("adminUser"))
-        const mun = adminUser?.municipality
+        const adminUser = JSON.parse(localStorage.getItem("adminUser"));
+        const area = decodeURIComponent(stateName || "");
 
-        if (!mun) return
-
-        setMunicipality(mun)
+        setAdminConfig({
+          areaName: area,
+          userName: adminUser?.name || ""
+        });
 
         const { data } = await axiosInstance.get(
-          `/properties/${encodeURIComponent(mun)}/get-dashboard-content`
-        )
+          `/properties/${encodeURIComponent("state")}/${encodeURIComponent(area)}/get-dashboard-content`
+        );
 
-        setFamilies(data.data || [])
+        setData(data.data || []);
       } catch (error) {
-        setFamilies([])
+        setData([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchFamilies()
-  }, [])
+    fetchDashboardData();
+  }, [stateName]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    navigate("/login", { replace: true });
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-200">
-      <header className="flex items-center justify-between px-8 py-5 border-b border-slate-300/50 bg-white/30 backdrop-blur-sm">
-        <h1 className="text-xl font-semibold tracking-[0.3em] text-slate-700">
+    <div className="relative min-h-screen flex flex-col overflow-hidden bg-slate-200">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[55%] h-[55%] rounded-full bg-blue-200/40 blur-3xl" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[55%] h-[55%] rounded-full bg-slate-300/50 blur-3xl" />
+        <div className="absolute top-[30%] right-[10%] w-[35%] h-[35%] rounded-full bg-cyan-200/30 blur-2xl" />
+        <div className="absolute bottom-[20%] left-[15%] w-[30%] h-[30%] rounded-full bg-blue-300/20 blur-2xl" />
+      </div>
+
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full border border-slate-400/20"
+            style={{
+              width: `${30 + i * 18}%`,
+              height: `${18 + i * 10}%`,
+              animation: `ripple ${4 + i}s ease-in-out infinite`,
+              animationDelay: `${i * 0.6}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <nav className="relative z-10 flex items-center justify-between px-10 py-5 border-b border-slate-300/40 bg-white/20 backdrop-blur-sm">
+        <h1 className="text-lg font-semibold tracking-[0.3em] text-slate-700 select-none">
           HYDRAONE
         </h1>
-        <span className="text-[10px] tracking-[0.2em] uppercase text-slate-400">
-          Admin Dashboard
-        </span>
-      </header>
-
-      <main className="flex-1 px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold tracking-wide text-slate-700">
-            Families residing in{" "}
-            <span className="text-slate-500">{municipality}</span>
-          </h2>
+        <div className="flex items-center gap-6">
+          {adminConfig.userName && (
+            <span className="text-xs tracking-widest text-slate-500 uppercase select-none hidden sm:block">
+              {adminConfig.userName}
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="px-6 py-2 bg-slate-700 hover:bg-slate-600
+              text-slate-100 text-xs tracking-widest font-medium
+              rounded transition-all duration-200
+              shadow-md shadow-slate-500/30
+              hover:shadow-lg hover:shadow-slate-500/40
+              active:translate-y-px
+              focus:outline-none focus:ring-2 focus:ring-slate-400/50"
+          >
+            Log Out
+          </button>
         </div>
+      </nav>
 
+      <main className="relative z-10 flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-48">
+          <div className="flex items-center justify-center h-64">
             <p className="text-sm tracking-widest uppercase text-slate-400 animate-pulse">
               Loading...
             </p>
           </div>
-        ) : families.length === 0 ? (
-          <div className="flex items-center justify-center h-48">
-            <p className="text-sm tracking-widest uppercase text-slate-400">
-              No families found
-            </p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {families.map((entry, index) => (
-              <WaterCard
-                key={index}
-                entry={entry}
-                onDetails={(waterId) => navigate(`/house/${waterId}`)}
-              />
-            ))}
-          </div>
+          <StatePage data={data} area={adminConfig.areaName} />
         )}
       </main>
 
-      <footer className="py-4 text-center">
-        <p className="text-[10px] tracking-[0.2em] uppercase text-slate-400">
-          Admin Access Only
+      <footer className="relative z-10 py-4 border-t border-slate-300/40 text-center bg-white/10 backdrop-blur-sm">
+        <p className="text-[10px] tracking-[0.2em] uppercase text-slate-400 select-none">
+          © 2025 HydraOne · Admin Access Only
         </p>
       </footer>
+
+      <style>{`
+        @keyframes ripple {
+          0%, 100% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.12); opacity: 1; }
+        }
+      `}</style>
     </div>
-  )
-}
+  );
+};
 
 export default Dashboard;

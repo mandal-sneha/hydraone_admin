@@ -1,12 +1,11 @@
+import React from "react";
 import { useNavigate } from "react-router-dom";
 
-export const Home = () => {
+const Home = () => {
   const navigate = useNavigate();
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-slate-200">
-
-      
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[55%] h-[55%] rounded-full bg-blue-200/40 blur-3xl" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[55%] h-[55%] rounded-full bg-slate-300/50 blur-3xl" />
@@ -14,7 +13,6 @@ export const Home = () => {
         <div className="absolute bottom-[20%] left-[15%] w-[30%] h-[30%] rounded-full bg-blue-300/20 blur-2xl" />
       </div>
 
-      
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         {[...Array(4)].map((_, i) => (
           <div
@@ -30,7 +28,6 @@ export const Home = () => {
         ))}
       </div>
 
-      
       <nav className="relative z-10 flex items-center justify-between px-10 py-5 border-b border-slate-300/40 bg-white/20 backdrop-blur-sm">
         <h1 className="text-lg font-semibold tracking-[0.3em] text-slate-700 select-none">
           HYDRAONE
@@ -49,9 +46,7 @@ export const Home = () => {
         </button>
       </nav>
 
-      
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center">
-
         <p className="text-[10px] tracking-[0.4em] uppercase text-slate-400 mb-5 select-none">
           Municipal Water Management
         </p>
@@ -64,11 +59,8 @@ export const Home = () => {
           HydraOne is a unified platform for municipal water authorities to monitor,
           manage, and maintain water supply across residential properties — all in one place.
         </p>
-
-
       </main>
 
-      
       <section className="relative z-10 px-8 pb-16">
         <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-5">
           {[
@@ -101,7 +93,6 @@ export const Home = () => {
         </div>
       </section>
 
-      
       <footer className="relative z-10 py-4 border-t border-slate-300/40 text-center bg-white/10 backdrop-blur-sm">
         <p className="text-[10px] tracking-[0.2em] uppercase text-slate-400 select-none">
           © 2025 HydraOne · Admin Access Only
@@ -117,3 +108,5 @@ export const Home = () => {
     </div>
   );
 };
+
+export default Home;
