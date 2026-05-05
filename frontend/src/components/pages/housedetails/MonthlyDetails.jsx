@@ -1,70 +1,25 @@
-import { useState } from "react";
-
-const monthlyData = {
-  2: {
-    1:  { guests: 2, water: 420 },
-    2:  { guests: 1, water: 210 },
-    3:  { guests: 3, water: 630, fines: [
-          { guestId: "G-1041", entry: "08:00", scheduledExit: "08:45", actualExit: "09:05", lateBy: 20, amount: 150 },
-        ]},
-    4:  { guests: 2, water: 400 },
-    5:  { guests: 0, water: 180 },
-    6:  { guests: 4, water: 820, fines: [
-          { guestId: "G-1055", entry: "12:00", scheduledExit: "12:50", actualExit: "13:10", lateBy: 20, amount: 200 },
-          { guestId: "G-1056", entry: "15:00", scheduledExit: "15:45", actualExit: "16:05", lateBy: 20, amount: 200 },
-        ]},
-    7:  { guests: 1, water: 200 },
-    8:  { guests: 2, water: 390 },
-    9:  { guests: 3, water: 610 },
-    10: { guests: 2, water: 430, fines: [
-          { guestId: "G-1060", entry: "08:10", scheduledExit: "09:00", actualExit: "09:35", lateBy: 35, amount: 300 },
-        ]},
-    11: { guests: 1, water: 215 },
-    12: { guests: 0, water: 170 },
-    13: { guests: 3, water: 590 },
-    14: { guests: 2, water: 400 },
-    15: { guests: 4, water: 840, fines: [
-          { guestId: "G-1071", entry: "12:05", scheduledExit: "12:55", actualExit: "13:20", lateBy: 25, amount: 150 },
-        ]},
-    16: { guests: 2, water: 420 },
-    17: { guests: 1, water: 205 },
-    18: { guests: 3, water: 615 },
-    19: { guests: 2, water: 395 },
-    20: { guests: 0, water: 165 },
-    21: { guests: 2, water: 410 },
-    22: { guests: 3, water: 620, fines: [
-          { guestId: "G-1085", entry: "15:00", scheduledExit: "15:30", actualExit: "15:52", lateBy: 22, amount: 200 },
-          { guestId: "G-1086", entry: "08:00", scheduledExit: "08:40", actualExit: "09:00", lateBy: 20, amount: 200 },
-        ]},
-    23: { guests: 1, water: 200 },
-    24: { guests: 2, water: 405 },
-    25: { guests: 3, water: 630 },
-    26: { guests: 2, water: 415 },
-    27: { guests: 0, water: 175 },
-    28: { guests: 4, water: 810, fines: [
-          { guestId: "G-1092", entry: "12:00", scheduledExit: "12:45", actualExit: "13:18", lateBy: 33, amount: 250 },
-        ]},
-    29: { guests: 2, water: 400 },
-    30: { guests: 3, water: 605 },
-    31: { guests: 1, water: 210 },
-  },
-};
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { axiosInstance } from "../../../lib/axios.js";
 
 const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
-const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
 
-function DayCell({ day, data, monthName }) {
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+const DayCell = ({ day, data, monthName }) => {
   const [hovered, setHovered] = useState(false);
   if (!day) return <div className="min-h-[52px]" />;
 
-  const hasFine = data?.fines?.length > 0;
+  const hasFine = data?.hasFine === true;
+  const waterUsed = data?.waterUsed || 0;
+  const normalGuests = data?.normalGuests || 0;
+  const fraudulentGuests = data?.fraudulentGuests || [];
 
   let cellCls = "bg-white/50 border-slate-200/60";
   if (hasFine) cellCls = "bg-red-50/80 border-red-300/70";
-  else if (data) cellCls = "bg-emerald-50/70 border-emerald-200/60";
 
   return (
     <div
@@ -88,15 +43,18 @@ function DayCell({ day, data, monthName }) {
         {data && (
           <div className="space-y-0.5">
             <div className="text-[10px] text-slate-500">
-              <span className="font-semibold text-slate-600">{data.guests}</span>g
+              <span className="font-semibold text-slate-600">{normalGuests}</span>g
+              {fraudulentGuests.length > 0 && (
+                <span className="ml-1 text-red-500">({fraudulentGuests.length}f)</span>
+              )}
             </div>
-            <div className="text-[10px] font-semibold text-blue-500">{data.water}L</div>
+            <div className="text-[10px] font-semibold text-blue-500">{waterUsed}L</div>
           </div>
         )}
       </div>
 
-      {hovered && data && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-60 bg-slate-800 text-white rounded-xl shadow-2xl shadow-slate-900/40 p-3 pointer-events-none">
+      {hovered && data && (hasFine || fraudulentGuests.length > 0) && (
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-64 bg-slate-800 text-white rounded-xl shadow-2xl shadow-slate-900/40 p-3 pointer-events-none">
           <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 rotate-45" />
 
           <div className="text-xs font-bold text-slate-200 mb-2 border-b border-slate-600 pb-1.5">
@@ -105,41 +63,48 @@ function DayCell({ day, data, monthName }) {
 
           <div className="space-y-1 text-xs mb-2">
             <div className="flex justify-between">
-              <span className="text-slate-400">No. of Guests</span>
-              <span className="font-semibold">{data.guests}</span>
+              <span className="text-slate-400">Normal Guests</span>
+              <span className="font-semibold">{normalGuests}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Total Water</span>
-              <span className="font-semibold text-blue-300">{data.water} L</span>
+              <span className="font-semibold text-blue-300">{waterUsed} L</span>
             </div>
+            {hasFine && fraudulentGuests.length === 0 && (
+              <div className="flex justify-between mt-1 pt-1 border-t border-slate-600">
+                <span className="text-slate-400">Fine Amount</span>
+                <span className="font-semibold text-red-400">₹{data?.fineAmount || 500}</span>
+              </div>
+            )}
           </div>
 
-          {hasFine ? (
+          {fraudulentGuests.length > 0 ? (
             <div className="border-t border-slate-600 pt-2">
               <div className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1.5">
-                Late Exit Fines · {data.fines.length} issued
+                Late Exit Fines · {fraudulentGuests.length} issued
               </div>
               <div className="space-y-2">
-                {data.fines.map((f, i) => (
+                {fraudulentGuests.map((f, i) => (
                   <div key={i} className="bg-red-900/30 rounded-lg px-2 py-1.5">
                     <div className="flex justify-between items-center mb-0.5">
-                      <span className="font-bold text-red-300 text-xs">{f.guestId}</span>
-                      <span className="text-red-400 font-bold text-xs">₹{f.amount}</span>
+                      <span className="font-bold text-red-300 text-[11px]">{f.guestName}</span>
+                      <span className="text-red-400 font-bold text-xs">₹{f.fine}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 space-y-0.5">
                       <div>
-                        Entry: <span className="text-slate-300">{f.entry}</span>
-                        {" · "}Sched. Exit: <span className="text-slate-300">{f.scheduledExit}</span>
+                        Sch. Exit: <span className="text-slate-300">{f.scheduledExit}</span>
                       </div>
                       <div>
                         Actual Exit: <span className="text-red-400 font-semibold">{f.actualExit}</span>
-                        {" · "}
-                        <span className="text-red-300 font-semibold">+{f.lateBy} min late</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
+          ) : hasFine ? (
+            <div className="border-t border-slate-600 pt-2 text-[11px] text-amber-400 font-medium">
+              ⚠️ Fine recorded (no guest details available)
             </div>
           ) : (
             <div className="border-t border-slate-600 pt-2 text-[11px] text-emerald-400 font-medium">
@@ -150,15 +115,92 @@ function DayCell({ day, data, monthName }) {
       )}
     </div>
   );
-}
+};
 
-export const MonthlyDetails = () => {
+const MonthlyDetails = () => {
+  const { waterid } = useParams();
   const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
-  const year = today.getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState(2);
+  const [apiData, setApiData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const data = monthlyData[selectedMonth] || {};
-  const daysInMonth = DAYS_IN_MONTH[selectedMonth];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        console.log("========== FRONTEND DEBUG ==========");
+        console.log("waterid:", waterid);
+        console.log("Selected month index:", selectedMonth, "Month:", MONTHS[selectedMonth]);
+        
+        const response = await axiosInstance.get(`/properties/${waterid}/get-family-monthly-usage-details`);
+        
+        console.log("API Response success:", response.data.success);
+        
+        if (response.data.success) {
+          console.log("Available months in response:", Object.keys(response.data.data));
+          
+          if (response.data.data.March) {
+            console.log("\n========== MARCH DATA FROM API ==========");
+            const marchData = response.data.data.March;
+            console.log("March totalFines:", marchData.totalFines);
+            console.log("March totalUsage:", marchData.totalUsage);
+            console.log("March days count:", marchData.days.length);
+            
+            const fineDays = marchData.days.filter(d => d.hasFine === true);
+            console.log("March days with hasFine=true:", fineDays.length);
+            fineDays.forEach(day => {
+              console.log(`  Day ${day.date}: hasFine=${day.hasFine}, fraudulentGuests=${day.fraudulentGuests?.length || 0}`);
+              if (day.fraudulentGuests && day.fraudulentGuests.length > 0) {
+                console.log("    Guests:", day.fraudulentGuests.map(g => g.guestName));
+              }
+            });
+            
+            const daysWithoutFine = marchData.days.filter(d => d.hasFine !== true);
+            console.log("March days without hasFine:", daysWithoutFine.length);
+          } else {
+            console.log("WARNING: March data not found in API response");
+          }
+          
+          setApiData(response.data.data);
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError("Failed to fetch data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (waterid) fetchData();
+  }, [waterid, selectedMonth]);
+
+  if (loading) return <div className="p-10 text-center text-slate-500 font-medium">Loading historical records...</div>;
+  if (error) return <div className="p-10 text-center text-red-500 font-bold">{error}</div>;
+
+  const currentMonthName = MONTHS[selectedMonth];
+  const monthInfo = apiData[currentMonthName] || { days: [], totalUsage: 0, totalFines: 0 };
+  
+  console.log(`\n========== RENDERING ${currentMonthName} ==========`);
+  console.log(`${currentMonthName} totalFines:`, monthInfo.totalFines);
+  console.log(`${currentMonthName} days with hasFine:`, monthInfo.days.filter(d => d.hasFine).length);
+  
+  const formattedData = {};
+  monthInfo.days.forEach(d => {
+    formattedData[d.date] = {
+      waterUsed: d.waterUsed,
+      normalGuests: d.normalGuests,
+      fraudulentGuests: d.fraudulentGuests || [],
+      hasFine: d.hasFine === true,
+      fineAmount: d.fineAmount
+    };
+  });
+
+  const year = today.getFullYear();
+  let daysInMonth = DAYS_IN_MONTH[selectedMonth];
+  if (selectedMonth === 1 && (year % 4 === 0 && year % 100 !== 0 || year % 400 === 0)) {
+    daysInMonth = 29;
+  }
+  
   const firstDayOfWeek = new Date(year, selectedMonth, 1).getDay();
 
   const cells = [
@@ -166,9 +208,6 @@ export const MonthlyDetails = () => {
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   while (cells.length % 7 !== 0) cells.push(null);
-
-  const fineDays = Object.values(data).filter(d => d.fines?.length > 0).length;
-  const totalFines = Object.values(data).reduce((acc, d) => acc + (d.fines?.length || 0), 0);
 
   return (
     <div className="relative rounded-2xl border border-slate-300/60 bg-white/60 backdrop-blur-sm shadow-sm shadow-slate-300/30 overflow-hidden">
@@ -178,11 +217,14 @@ export const MonthlyDetails = () => {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-xs font-semibold tracking-[0.2em] uppercase text-violet-600">Monthly Details</h2>
-            {fineDays > 0 && (
-              <p className="text-[11px] text-red-400 mt-0.5">
-                {fineDays} late exit day{fineDays > 1 ? "s" : ""} &middot; {totalFines} fine{totalFines > 1 ? "s" : ""} this month
-              </p>
-            )}
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Total Usage: <span className="font-bold text-blue-600">{monthInfo.totalUsage}L</span> 
+              {monthInfo.totalFines > 0 && (
+                <span className="text-red-400 ml-2">
+                  &middot; {monthInfo.totalFines} days with fines
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {MONTHS.map((m, i) => (
@@ -214,7 +256,7 @@ export const MonthlyDetails = () => {
 
       <div className="px-6 pb-6">
         <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
             <div key={d} className="text-center text-[10px] font-bold tracking-widest uppercase text-slate-400 py-1">
               {d}
             </div>
@@ -222,10 +264,12 @@ export const MonthlyDetails = () => {
         </div>
         <div className="grid grid-cols-7 gap-1.5">
           {cells.map((day, idx) => (
-            <DayCell key={idx} day={day} data={day ? data[day] : null} monthName={MONTHS[selectedMonth]} />
+            <DayCell key={idx} day={day} data={day ? formattedData[day] : null} monthName={MONTHS[selectedMonth]} />
           ))}
         </div>
       </div>
     </div>
   );
 };
+
+export default MonthlyDetails;
