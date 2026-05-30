@@ -97,7 +97,7 @@ export const getFamilyDetails = async (req, res) => {
     if (!property) {
       return res.status(404).json({ success: false, message: "Property not found" });
     }
-    
+
     const family = await Family.findOne({ rootId, tenantCode });
     if (!family) {
       const newFamily = new Family({
@@ -114,16 +114,18 @@ export const getFamilyDetails = async (req, res) => {
 
     const members = await User.find({ waterId: waterid }).select("userName userId userProfilePhoto");
 
+    const propertyObj = property.toObject({ virtuals: false });
+
     return res.status(200).json({
       success: true,
       data: {
         property: {
-          wardNumber: property.wardNumber,
-          municipality: property.municipality,
-          district: property.district,
-          typeOfProperty: property.typeOfProperty,
-          id: property.id,
-          numberOfTenants: property.numberOfTenants,
+          wardNumber: propertyObj.wardNumber,
+          municipality: propertyObj.municipality,
+          district: propertyObj.district,
+          typeOfProperty: propertyObj.typeOfProperty,
+          id: propertyObj.id,
+          numberOfTenants: propertyObj.numberOfTenants,
         },
         members,
       },
@@ -132,49 +134,91 @@ export const getFamilyDetails = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
 export const getWaterRegistrationDetailsForToday = async (req, res) => {
   try {
     const { waterid } = req.params;
-    const registration = await WaterRegistration.findOne({ waterId: waterid });
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const registration = await WaterRegistration.findOne({
+      waterId: waterid,
+      submittedAt: { $gte: todayStart, $lte: todayEnd },
+    });
 
     if (!registration) {
       return res.status(404).json({ success: false, message: "No water registration found for today" });
     }
 
+    if (registration.status !== "approved") {
+      return res.status(200).json({
+        success: true,
+        data: {
+          slot: registration.slot,
+          extraWaterRequested: registration.extraWaterRequested,
+          members: [],
+          guests: [],
+          status: registration.status,
+          message: "Registration pending approval"
+        },
+      });
+    }
+
     const primaryUsers = await User.find({
       userId: { $in: registration.primaryMembers },
-    }).select("userId userName");
+    }).select("userId userName userProfilePhoto email");
 
     const specialMemberSet = new Set(registration.specialMembers);
 
     const members = primaryUsers.map((user) => ({
       userId: user.userId,
       userName: user.userName,
+      userProfilePhoto: user.userProfilePhoto,
       isSpecial: specialMemberSet.has(user.userId),
     }));
 
     const guestDetails = [];
 
-    for (const guestId of registration.invitedGuests) {
+    if (registration.invitedGuests && registration.invitedGuests.length > 0) {
       const invitation = await Invitation.findOne({
-        [`invitedGuests.${guestId}`]: { $exists: true },
         hostwaterId: waterid,
+        createdAt: { $gte: todayStart, $lte: todayEnd },
       });
 
-      if (!invitation) continue;
-      const status = invitation.invitedGuests.get(guestId);
-      if (status !== "accepted" && status !== "arrived") continue;
+      for (const guestId of registration.invitedGuests) {
+        const guestStatus = invitation?.invitedGuests?.get(guestId) || "pending";
 
-      const guestUser = await User.findOne({ userId: guestId }).select("userId userName");
-      if (!guestUser) continue;
+        if (guestStatus === "declined") continue;
 
-      guestDetails.push({
-        userId: guestUser.userId,
-        userName: guestUser.userName,
-        arrivalTime: invitation.arrivalTime?.get(guestId) ?? null,
-        stayDuration: invitation.stayDuration?.get(guestId) ?? null,
-        status,
-      });
+        const arrivalTime = invitation?.arrivalTime?.get(guestId) || null;
+        const stayDuration = invitation?.stayDuration?.get(guestId) || null;
+
+        const guestUser = await User.findOne({ userId: guestId }).select("userId userName userProfilePhoto email");
+        if (guestUser) {
+          guestDetails.push({
+            userId: guestUser.userId,
+            userName: guestUser.userName,
+            userProfilePhoto: guestUser.userProfilePhoto,
+            email: guestUser.email,
+            arrivalTime,
+            stayDuration,
+            status: guestStatus,
+          });
+        } else {
+          guestDetails.push({
+            userId: guestId,
+            userName: "Unknown User",
+            userProfilePhoto: null,
+            email: null,
+            arrivalTime,
+            stayDuration,
+            status: guestStatus,
+          });
+        }
+      }
     }
 
     return res.status(200).json({
@@ -184,9 +228,11 @@ export const getWaterRegistrationDetailsForToday = async (req, res) => {
         extraWaterRequested: registration.extraWaterRequested,
         members,
         guests: guestDetails,
+        status: registration.status,
       },
     });
   } catch (error) {
+    console.error("Error in getWaterRegistrationDetailsForToday:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -195,9 +241,9 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
   try {
     const { waterid } = req.params;
     const [rootId, tenantCode] = waterid.split("_");
-    
+
     let family = await Family.findOne({ rootId, tenantCode });
-    
+
     if (!family) {
       family = new Family({
         rootId,
@@ -210,17 +256,17 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
       });
       await family.save();
     }
-    
+
     const entryExitLogs = await EntryExitLog.find({ waterId: waterid });
     const invitations = await Invitation.find({ hostwaterId: waterid });
     const currentYear = new Date().getFullYear();
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const result = {};
-    
+
     monthNames.forEach(m => {
       result[m] = { days: [], totalUsage: 0, totalFines: 0 };
     });
-    
+
     let waterUsageMap;
     if (family.waterUsage instanceof Map) {
       waterUsageMap = family.waterUsage;
@@ -229,14 +275,14 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
     } else {
       waterUsageMap = new Map();
     }
-    
+
     const fineDatesSet = new Set(family.fineDates || []);
-    
+
     const fraudDetailsByDate = new Map();
-    
+
     for (const log of entryExitLogs) {
       const logDate = new Date(log.createdAt);
-      
+
       let fraudEntriesMap;
       if (log.fraudEntries instanceof Map) {
         fraudEntriesMap = log.fraudEntries;
@@ -249,15 +295,15 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
       } else {
         continue;
       }
-      
+
       for (const [guestId, fraudData] of fraudEntriesMap.entries()) {
         const fraudDate = fraudData.detectedAt ? new Date(fraudData.detectedAt) : logDate;
         const fraudDateStr = fraudDate.toISOString().split('T')[0];
-        
+
         if (!fraudDetailsByDate.has(fraudDateStr)) {
           fraudDetailsByDate.set(fraudDateStr, []);
         }
-        
+
         const guestUser = await User.findOne({ userId: guestId });
         fraudDetailsByDate.get(fraudDateStr).push({
           guestName: guestUser ? guestUser.userName : "Unknown Guest",
@@ -268,13 +314,13 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
         });
       }
     }
-    
+
     for (const fineDate of fineDatesSet) {
       if (!fraudDetailsByDate.has(fineDate)) {
         const date = new Date(fineDate);
         if (date.getFullYear() === currentYear && !isNaN(date.getTime())) {
           let foundGuests = [];
-          
+
           for (const invitation of invitations) {
             if (invitation.arrivalTime && invitation.arrivalTime.size > 0) {
               for (const [guestId, arrivalTime] of invitation.arrivalTime.entries()) {
@@ -282,24 +328,24 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
                 if (guestUser) {
                   const stayDuration = invitation.stayDuration?.get(guestId) || "2";
                   const durationHours = parseInt(stayDuration);
-                  
+
                   let scheduledExitTime = "N/A";
                   if (arrivalTime) {
                     const [time, modifier] = arrivalTime.split(" ");
                     let [hours, minutes] = time.split(":");
                     let hourNum = parseInt(hours);
-                    
+
                     if (modifier === "PM" && hourNum !== 12) hourNum += 12;
                     if (modifier === "AM" && hourNum === 12) hourNum = 0;
-                    
+
                     hourNum += durationHours;
                     const newModifier = hourNum >= 12 ? "PM" : "AM";
                     if (hourNum > 12) hourNum -= 12;
                     if (hourNum === 0) hourNum = 12;
-                    
+
                     scheduledExitTime = `${hourNum}:${minutes || "00"} ${newModifier}`;
                   }
-                  
+
                   foundGuests.push({
                     guestName: guestUser.userName,
                     guestId: guestId,
@@ -311,7 +357,7 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
               }
             }
           }
-          
+
           if (foundGuests.length > 0) {
             fraudDetailsByDate.set(fineDate, foundGuests);
           } else {
@@ -326,16 +372,16 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
         }
       }
     }
-    
+
     const allDatesWithData = new Set();
-    
+
     for (const [dateStr, usage] of waterUsageMap.entries()) {
       allDatesWithData.add(dateStr);
       const date = new Date(dateStr);
       if (date.getFullYear() === currentYear && !isNaN(date.getTime())) {
         const mName = monthNames[date.getMonth()];
         const dayNum = date.getDate();
-        
+
         let guestCount = 0;
         for (const log of entryExitLogs) {
           const logDate = new Date(log.createdAt);
@@ -349,17 +395,17 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
             break;
           }
         }
-        
+
         const hasFine = fineDatesSet.has(dateStr);
-        
+
         let fraudulentGuests = [];
         if (hasFine && fraudDetailsByDate.has(dateStr)) {
           fraudulentGuests = fraudDetailsByDate.get(dateStr);
         }
-        
+
         const normalGuestsCount = Math.max(0, guestCount - fraudulentGuests.length);
         const fineAmount = hasFine ? (fraudulentGuests.length > 0 ? fraudulentGuests.length * 500 : 500) : 0;
-        
+
         result[mName].days.push({
           date: dayNum,
           waterUsed: usage,
@@ -368,21 +414,21 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
           hasFine: hasFine,
           fineAmount: fineAmount
         });
-        
+
         result[mName].totalUsage += usage;
         if (hasFine) {
           result[mName].totalFines += 1;
         }
       }
     }
-    
+
     for (const [dateStr, fraudGuests] of fraudDetailsByDate.entries()) {
       if (!allDatesWithData.has(dateStr)) {
         const date = new Date(dateStr);
         if (date.getFullYear() === currentYear && !isNaN(date.getTime())) {
           const mName = monthNames[date.getMonth()];
           const dayNum = date.getDate();
-          
+
           const existingDay = result[mName].days.find(d => d.date === dayNum);
           if (!existingDay) {
             result[mName].days.push({
@@ -404,12 +450,12 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
         }
       }
     }
-    
+
     for (const monthName of monthNames) {
       const monthData = result[monthName];
       if (monthData.totalFines > 0 && monthData.days.filter(d => d.hasFine).length === 0 && monthData.days.length > 0) {
         const fineDaysToAdd = Math.min(monthData.totalFines, monthData.days.length);
-        
+
         for (let i = 0; i < fineDaysToAdd && i < monthData.days.length; i++) {
           if (!monthData.days[i].hasFine) {
             monthData.days[i].hasFine = true;
@@ -426,11 +472,11 @@ export const getFamilyMonthlyUsageDetails = async (req, res) => {
         }
       }
     }
-    
+
     Object.keys(result).forEach(m => {
       result[m].days.sort((a, b) => a.date - b.date);
     });
-    
+
     return res.status(200).json({ success: true, data: result });
   } catch (error) {
     console.error("Error in getFamilyMonthlyUsageDetails:", error);
@@ -445,7 +491,7 @@ export const viewProperties = async (req, res) => {
     if (state) query.state = state;
     if (district) query.district = district;
     if (municipality) query.municipality = municipality;
-    
+
     const properties = await Property.find(query);
     return res.status(200).json({ success: true, properties });
   } catch (error) {

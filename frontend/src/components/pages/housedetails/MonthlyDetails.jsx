@@ -104,11 +104,11 @@ const DayCell = ({ day, data, monthName }) => {
             </div>
           ) : hasFine ? (
             <div className="border-t border-slate-600 pt-2 text-[11px] text-amber-400 font-medium">
-              ⚠️ Fine recorded (no guest details available)
+              Fine recorded (no guest details available)
             </div>
           ) : (
             <div className="border-t border-slate-600 pt-2 text-[11px] text-emerald-400 font-medium">
-              ✓ No late exits on this day
+              No late exits on this day
             </div>
           )}
         </div>
@@ -120,7 +120,8 @@ const DayCell = ({ day, data, monthName }) => {
 const MonthlyDetails = () => {
   const { waterid } = useParams();
   const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(2);
+  const currentMonthIndex = today.getMonth();
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthIndex);
   const [apiData, setApiData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -129,39 +130,9 @@ const MonthlyDetails = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        console.log("========== FRONTEND DEBUG ==========");
-        console.log("waterid:", waterid);
-        console.log("Selected month index:", selectedMonth, "Month:", MONTHS[selectedMonth]);
-        
         const response = await axiosInstance.get(`/properties/${waterid}/get-family-monthly-usage-details`);
         
-        console.log("API Response success:", response.data.success);
-        
         if (response.data.success) {
-          console.log("Available months in response:", Object.keys(response.data.data));
-          
-          if (response.data.data.March) {
-            console.log("\n========== MARCH DATA FROM API ==========");
-            const marchData = response.data.data.March;
-            console.log("March totalFines:", marchData.totalFines);
-            console.log("March totalUsage:", marchData.totalUsage);
-            console.log("March days count:", marchData.days.length);
-            
-            const fineDays = marchData.days.filter(d => d.hasFine === true);
-            console.log("March days with hasFine=true:", fineDays.length);
-            fineDays.forEach(day => {
-              console.log(`  Day ${day.date}: hasFine=${day.hasFine}, fraudulentGuests=${day.fraudulentGuests?.length || 0}`);
-              if (day.fraudulentGuests && day.fraudulentGuests.length > 0) {
-                console.log("    Guests:", day.fraudulentGuests.map(g => g.guestName));
-              }
-            });
-            
-            const daysWithoutFine = marchData.days.filter(d => d.hasFine !== true);
-            console.log("March days without hasFine:", daysWithoutFine.length);
-          } else {
-            console.log("WARNING: March data not found in API response");
-          }
-          
           setApiData(response.data.data);
         }
       } catch (err) {
@@ -172,17 +143,13 @@ const MonthlyDetails = () => {
       }
     };
     if (waterid) fetchData();
-  }, [waterid, selectedMonth]);
+  }, [waterid]);
 
   if (loading) return <div className="p-10 text-center text-slate-500 font-medium">Loading historical records...</div>;
   if (error) return <div className="p-10 text-center text-red-500 font-bold">{error}</div>;
 
   const currentMonthName = MONTHS[selectedMonth];
   const monthInfo = apiData[currentMonthName] || { days: [], totalUsage: 0, totalFines: 0 };
-  
-  console.log(`\n========== RENDERING ${currentMonthName} ==========`);
-  console.log(`${currentMonthName} totalFines:`, monthInfo.totalFines);
-  console.log(`${currentMonthName} days with hasFine:`, monthInfo.days.filter(d => d.hasFine).length);
   
   const formattedData = {};
   monthInfo.days.forEach(d => {
@@ -221,25 +188,31 @@ const MonthlyDetails = () => {
               Total Usage: <span className="font-bold text-blue-600">{monthInfo.totalUsage}L</span> 
               {monthInfo.totalFines > 0 && (
                 <span className="text-red-400 ml-2">
-                  &middot; {monthInfo.totalFines} days with fines
+                  · {monthInfo.totalFines} days with fines
                 </span>
               )}
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {MONTHS.map((m, i) => (
-              <button
-                key={m}
-                onClick={() => setSelectedMonth(i)}
-                className={`px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all duration-150
-                  ${i === selectedMonth
-                    ? "bg-violet-600 text-white shadow shadow-violet-300/40"
-                    : "bg-slate-100/80 text-slate-500 hover:bg-violet-50 hover:text-violet-600 border border-slate-200/60"
-                  }`}
-              >
-                {m.slice(0, 3)}
-              </button>
-            ))}
+            {MONTHS.map((m, i) => {
+              const isSelected = i === selectedMonth;
+              const isCurrent = i === currentMonthIndex;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonth(i)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all duration-150
+                    ${isSelected
+                      ? "bg-violet-600 text-white shadow shadow-violet-300/40"
+                      : isCurrent
+                      ? "bg-violet-100 text-violet-700 border border-violet-300"
+                      : "bg-slate-100/80 text-slate-500 hover:bg-violet-50 hover:text-violet-600 border border-slate-200/60"
+                    }`}
+                >
+                  {m.slice(0, 3)}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

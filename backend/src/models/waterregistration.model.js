@@ -24,6 +24,22 @@ const waterRegistrationSchema = new mongoose.Schema({
     extraWaterRequested: {
         type: Boolean,
         default: false
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending'
+    },
+    rejectionReason: {
+        type: String,
+        default: ''
+    },
+    submittedAt: {
+        type: Date,
+        default: Date.now
+    },
+    respondedAt: {
+        type: Date
     }
 }, { timestamps: true });
 
