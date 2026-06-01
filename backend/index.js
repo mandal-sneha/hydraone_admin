@@ -5,6 +5,7 @@ import { ConnectDB } from "./src/lib/db.js";
 
 import authRoutes from "./src/routes/auth.route.js";
 import propertyRoutes from "./src/routes/property.route.js";
+import waterRegistrationRoutes from "./src/routes/waterregistration.route.js";
 
 const app = express();
 
@@ -18,8 +19,9 @@ app.use(cors({
 
 app.use("/auth", authRoutes);
 app.use("/properties", propertyRoutes);
+app.use("/water-requests", waterRegistrationRoutes);
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

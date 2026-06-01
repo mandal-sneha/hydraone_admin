@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import HouseInfo from "./HouseInfo";
-import { MonthlyDetails } from "./MonthlyDetails";
+import MonthlyDetails from "./MonthlyDetails";
 
 export const HouseDetails = () => {
   const navigate = useNavigate();
