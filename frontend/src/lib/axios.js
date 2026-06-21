@@ -1,7 +1,10 @@
 import axios from "axios";
 
+const isProduction = process.env.NODE_ENV === "production";
+
+
 export const axiosInstance = axios.create({
-    baseURL: "http://localhost:8080",
+    baseURL: isProduction ? "https://hydraone-admin-backend.onrender.com" : "http://localhost:8080",
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json'
