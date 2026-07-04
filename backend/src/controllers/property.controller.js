@@ -498,3 +498,101 @@ export const viewProperties = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const getWaterRegistrationForDate = async (req, res) => {
+  try {
+    const { waterid } = req.params;
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ success: false, message: "Date parameter is required" });
+    }
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const registration = await WaterRegistration.findOne({
+      waterId: waterid,
+      submittedAt: { $gte: targetDate, $lt: nextDay },
+    });
+
+    if (!registration) {
+      return res.status(404).json({ success: false, message: "No water registration found for this date" });
+    }
+
+    const primaryUsers = await User.find({
+      userId: { $in: registration.primaryMembers },
+    }).select("userId userName userProfilePhoto email");
+
+    const specialMemberSet = new Set(registration.specialMembers);
+
+    const members = primaryUsers.map((user) => ({
+      userId: user.userId,
+      userName: user.userName,
+      userProfilePhoto: user.userProfilePhoto,
+      isSpecial: specialMemberSet.has(user.userId),
+    }));
+
+    const guestDetails = [];
+
+    if (registration.invitedGuests && registration.invitedGuests.length > 0) {
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const invitation = await Invitation.findOne({
+        hostwaterId: waterid,
+        createdAt: { $gte: startOfDay, $lte: endOfDay },
+      });
+
+      for (const guestId of registration.invitedGuests) {
+        const guestStatus = invitation?.invitedGuests?.get(guestId) || "pending";
+
+        if (guestStatus === "declined") continue;
+
+        const arrivalTime = invitation?.arrivalTime?.get(guestId) || null;
+        const stayDuration = invitation?.stayDuration?.get(guestId) || null;
+
+        const guestUser = await User.findOne({ userId: guestId }).select("userId userName userProfilePhoto email");
+        if (guestUser) {
+          guestDetails.push({
+            userId: guestUser.userId,
+            userName: guestUser.userName,
+            userProfilePhoto: guestUser.userProfilePhoto,
+            email: guestUser.email,
+            arrivalTime,
+            stayDuration,
+            status: guestStatus,
+          });
+        } else {
+          guestDetails.push({
+            userId: guestId,
+            userName: "Unknown User",
+            userProfilePhoto: null,
+            email: null,
+            arrivalTime,
+            stayDuration,
+            status: guestStatus,
+          });
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        slot: registration.slot,
+        extraWaterRequested: registration.extraWaterRequested,
+        members,
+        guests: guestDetails,
+        status: registration.status,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getWaterRegistrationForDate:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
